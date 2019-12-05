@@ -2,7 +2,7 @@
 
 from pynput import keyboard, mouse
 import json
-
+import pickle
 
 
 '''Any operation should be indicated as a tuple in [(),(),...]'''
@@ -17,14 +17,15 @@ class Operation:
     ''' nnnn  '''
     key_op = keyboard.Controller()
     mouse_op = mouse.Controller()
-    op = {  'pressm': mouse_op.press,
+    op = {  
+            'pressm': mouse_op.press,
             'releasem': mouse_op.release,
             'click': mouse_op.click,
             'scroll': mouse_op.scroll,
             'move': mouse_op.move,
             'position': mouse_op.position,
-            'pressk': key_op.press,
-            'releasek': key_op.release,
+            'press': key_op.press,
+            'release': key_op.release,
             }
 
 #    def record(self):
@@ -32,16 +33,22 @@ class Operation:
         '''return op object: 2 elements tuple: (action, arguments)'''
         out=[]
         def on_press(key):
-            out.append(('pressk', format(key)))
+            try:
+                out.append(('press', key.name))
+            except AttributeError:
+                out.append(('press', key.char))
         def on_release(key):
             if key == keyboard.Key.esc:
                 mouse_listener.stop()
                 keyboard_listener.stop()
-            out.append(('releasek', key))
+            try:
+                out.append(('release', key.name))
+            except AttributeError:
+                out.append(('release', key.char))
         def on_move(x,y): 
             out.append(('move', (x,y)))
         def on_click(x,y,button,pressed):
-            out.append(('click', button))
+            out.append(('click', button.name))
         def on_scroll(x,y,dx,dy):
             out.append(('scroll',(dx,dy)))
 
@@ -60,12 +67,12 @@ class Operation:
         with open(filename, 'w') as f:
             json.dump(self.out, f)
 
-    def record_to_pickel(self, filename='test.pkl'):
-        with open(filename, 'w') as f:
-            pickel.dump(self.out, f)
+    def record_to_pickle(self, filename='test.pkl'):
+        with open(filename, 'wb') as f:
+            pickle.dump(self.out, f)
 
 
-    def repeat(self, op):
+    def repeat(self, op, *args):
         '''execute operations saved in op'''
-        pass
+        self.op[op](*args)
 
