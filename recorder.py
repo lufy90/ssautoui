@@ -13,6 +13,11 @@ class Recorder:
     pass
 
 
+def fix(a):
+    def f(*b):
+        a=b
+    return f
+
 class Operation:
     ''' nnnn  '''
     key_op = keyboard.Controller()
@@ -27,11 +32,17 @@ class Operation:
             'press': key_op.press,
             'release': key_op.release,
             }
+    keys = {}
+    for i,j in keyboard.Key.__members__.items():
+        keys[i] = j
+    button = {}
+    for i,j in mouse.Button.__members__.items():
+        button[i] = j
 
 #    def record(self):
     def __init__(self):
         '''return op object: 2 elements tuple: (action, arguments)'''
-        out=[]
+        out=[('position', self.mouse_op.position)]
         def on_press(key):
             try:
                 out.append(('press', key.name))
@@ -74,5 +85,10 @@ class Operation:
 
     def repeat(self, op, *args):
         '''execute operations saved in op'''
-        self.op[op](*args)
-
+        try:
+            self.op[op](*args)
+        except Exception:
+            try:
+                self.op[op](self.button[args[0]])
+            except Exception:
+                self.op[op](self.keys[args[0]])
