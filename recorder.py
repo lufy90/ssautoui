@@ -3,7 +3,7 @@
 from pynput import keyboard, mouse
 import json
 import pickle
-
+import time
 
 '''Any operation should be indicated as a tuple in [(),(),...]'''
 '''Turn all Operation Objects to string and save in files, '''
@@ -39,10 +39,12 @@ class Operation:
     for i,j in mouse.Button.__members__.items():
         button[i] = j
 
-#    def record(self):
-    def __init__(self):
+    out = []
+
+    def record(self):
+#    def __init__(self):
         '''return op object: 2 elements tuple: (action, arguments)'''
-        out=[('position', self.mouse_op.position)]
+        out=[('position', *self.mouse_op.position)]
         def on_press(key):
             try:
                 out.append(('press', key.name))
@@ -57,11 +59,11 @@ class Operation:
             except AttributeError:
                 out.append(('release', key.char))
         def on_move(x,y): 
-            out.append(('move', (x,y)))
+            out.append(('move', x,y))
         def on_click(x,y,button,pressed):
             out.append(('click', button.name))
         def on_scroll(x,y,dx,dy):
-            out.append(('scroll',(dx,dy)))
+            out.append(('scroll',dx,dy))
 
         keyboard_listener = keyboard.Listener(on_press=on_press,
                 on_release=on_release)
@@ -83,12 +85,32 @@ class Operation:
             pickle.dump(self.out, f)
 
 
-    def repeat(self, op, *args):
+    def repeat(self, *args):
         '''execute operations saved in op'''
-        try:
-            self.op[op](*args)
-        except Exception:
+        
+        # if args[0] is "position":
+        # I REALY CANNT TELL, WHY 'is' NOT WORK HERE!!!!!
+        print('args:', args)
+        print('args0: ', args[0])
+        print('args1: ', args[1])
+        print('*args1: ', *(args[1:]))
+        print('if: ', args[0] in self.op.keys())
+        if args[0] in 'position':
+            self.mouse_op.position = args[1:]
+        else:
             try:
-                self.op[op](self.button[args[0]])
-            except Exception:
-                self.op[op](self.keys[args[0]])
+                self.op[args[0]](*(args[1:]))
+            except (KeyError, AttributeError, ValueError):
+                try:
+                    self.op[args[0]](self.button[args[1]])
+                except KeyError:
+                    self.op[args[0]](self.keys[args[1]])
+
+    def repeat_from_pickle(self, filename='test.pkl', l=1):
+        with open(filename, 'rb') as f:
+            ops = pickle.load(f)
+        for item in ops:
+            self.repeat(*item)
+            time.sleep(l)
+
+
