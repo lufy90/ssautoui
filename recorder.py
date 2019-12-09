@@ -1,116 +1,116 @@
 #!/usr/bin/python3
+# filename: recoder.py
+# Author: lufei
+# Date: 20191209 21:16:52
+
 
 from pynput import keyboard, mouse
-import json
-import pickle
+import pickle, json
 import time
+import sys
 
-'''Any operation should be indicated as a tuple in [(),(),...]'''
-'''Turn all Operation Objects to string and save in files, '''
-class Recorder:
-    '''class Recorder, '''
+class MouseController(mouse.Controller):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    pass
+    def put(self, *args):
+        self.position = args
 
-
-def fix(a):
-    def f(*b):
-        a=b
-    return f
-
-class Operation:
-    ''' nnnn  '''
-    key_op = keyboard.Controller()
-    mouse_op = mouse.Controller()
-    op = {  
-            'pressm': mouse_op.press,
-            'releasem': mouse_op.release,
-            'click': mouse_op.click,
-            'scroll': mouse_op.scroll,
-            'move': mouse_op.move,
-            'position': mouse_op.position,
-            'press': key_op.press,
-            'release': key_op.release,
-            }
-    keys = {}
-    for i,j in keyboard.Key.__members__.items():
-        keys[i] = j
+class Recorder():
+    '''recorde user operations'''
+    mc = MouseController()
+    kc = keyboard.Controller()
     button = {}
-    for i,j in mouse.Button.__members__.items():
-        button[i] = j
+    key = {}
+    mc_map = {
+            'position': mc.put,
+            'press': mc.press,
+            'release': mc.release,
+            'scroll': mc.scroll,
+            }
+    kc_map = {
+            'kpress': kc.press,
+            'krelease': kc.release,
+            }
+    for name,value in mouse.Button.__members__.items():
+        button[name] = value
 
-    out = []
+    for name,value in keyboard.Key.__members__.items():
+        key[name] = value
+
+    def __init__(self):
+        pass
 
     def record(self):
-#    def __init__(self):
-        '''return op object: 2 elements tuple: (action, arguments)'''
-        out=[('position', *self.mouse_op.position)]
-        def on_press(key):
-            try:
-                out.append(('press', key.name))
-            except AttributeError:
-                out.append(('press', key.char))
-        def on_release(key):
-            if key == keyboard.Key.esc:
-                mouse_listener.stop()
-                keyboard_listener.stop()
-            try:
-                out.append(('release', key.name))
-            except AttributeError:
-                out.append(('release', key.char))
-        def on_move(x,y): 
-            out.append(('move', x,y))
+        out = []
         def on_click(x,y,button,pressed):
-            out.append(('click', button.name))
+            if pressed:
+                out.append(('position', x, y))
+                out.append(('press', button.name))
+            else:
+                out.append(('position', x, y))
+                out.append(('release', button.name))
+        def on_move(x,y):
+            pass
+            #out.append(('position',x,y))
         def on_scroll(x,y,dx,dy):
+            out.append(('position',x,y))
             out.append(('scroll',dx,dy))
+        def on_kpress(key):
+            try:
+                out.append(('kpress', key.name))
+            except AttributeError:
+                out.append(('kpress', key.char))
+        def on_krelease(key):
+            try:
+                out.append(('krelease', key.name))
+            except AttributeError:
+                out.append(('krelease', key.char))
 
-        keyboard_listener = keyboard.Listener(on_press=on_press,
-                on_release=on_release)
-        mouse_listener = mouse.Listener(on_move=on_move, 
-                on_click=on_click, on_scroll=on_scroll)
+            if key is keyboard.Key.esc:
+                ml.stop()
+                kl.stop()
 
-        keyboard_listener.start()
-        mouse_listener.start()
-
+        kl = keyboard.Listener(on_press=on_kpress, 
+                on_release=on_krelease)
+        ml = mouse.Listener(on_click=on_click,
+                on_move=on_move,
+                on_scroll=on_scroll)
+        kl.start()
+        ml.start()
         self.out = out
-
-    def record_to_json(self, filename='test.json'):
-        '''NOT ready for now'''
-        with open(filename, 'w') as f:
-            json.dump(self.out, f)
 
     def record_to_pickle(self, filename='test.pkl'):
         with open(filename, 'wb') as f:
             pickle.dump(self.out, f)
 
-
     def repeat(self, *args):
-        '''execute operations saved in op'''
-        
-        # if args[0] is "position":
-        # I REALY CANNT TELL, WHY 'is' NOT WORK HERE!!!!!
-        print('args:', args)
-        print('args0: ', args[0])
-        print('args1: ', args[1])
-        print('*args1: ', *(args[1:]))
-        print('if: ', args[0] in self.op.keys())
-        if args[0] in 'position':
-            self.mouse_op.position = args[1:]
-        else:
-            try:
-                self.op[args[0]](*(args[1:]))
-            except (KeyError, AttributeError, ValueError):
-                try:
-                    self.op[args[0]](self.button[args[1]])
-                except KeyError:
-                    self.op[args[0]](self.keys[args[1]])
+        '''e.g: args: press, x, y'''
+        print(args)
 
-    def repeat_from_pickle(self, filename='test.pkl', l=1):
+        if args[0] in self.kc_map.keys():
+            caller = self.kc_map[args[0]]
+            try:
+                caller(*args[1:])
+            except Exception as e:
+                #print('Exception occurs:%s: %s'%(type(e),e))
+                caller(self.key[args[1]])
+        elif args[0] in self.mc_map.keys():
+            caller = self.mc_map[args[0]]
+            try:
+                caller(*args[1:])
+            except Exception as e:
+                #print('Exception occurs:%s: %s'%(type(e),e))
+                caller(self.button[args[1]])
+        else:
+            print('Unkonwn operation: ', args[0])
+            sys.exit(1)
+
+    def repeat_from_pickle(self, filename='test.pkl', interval=0.5):
         with open(filename, 'rb') as f:
             ops = pickle.load(f)
+
         for item in ops:
             self.repeat(*item)
-            time.sleep(l)
-
-
+            time.sleep(interval)
+        
