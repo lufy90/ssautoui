@@ -39,7 +39,7 @@ class Recorder():
         key[name] = value
 
     def __init__(self):
-        pass
+        self.out = []
 
     def record(self):
         out = []
@@ -51,8 +51,8 @@ class Recorder():
                 out.append(('position', x, y))
                 out.append(('release', button.name))
         def on_move(x,y):
-            pass
             #out.append(('position',x,y))
+            pass
         def on_scroll(x,y,dx,dy):
             out.append(('position',x,y))
             out.append(('scroll',dx,dy))
@@ -78,6 +78,12 @@ class Recorder():
                 on_scroll=on_scroll)
         kl.start()
         ml.start()
+        while True:
+            if kl.running and ml.running:
+                time.sleep(1)
+                continue
+            else:
+                break
         self.out = out
 
     def record_to_pickle(self, filename='test.pkl'):
@@ -86,21 +92,18 @@ class Recorder():
 
     def repeat(self, *args):
         '''e.g: args: press, x, y'''
-        print(args)
 
         if args[0] in self.kc_map.keys():
             caller = self.kc_map[args[0]]
             try:
                 caller(*args[1:])
             except Exception as e:
-                #print('Exception occurs:%s: %s'%(type(e),e))
                 caller(self.key[args[1]])
         elif args[0] in self.mc_map.keys():
             caller = self.mc_map[args[0]]
             try:
                 caller(*args[1:])
             except Exception as e:
-                #print('Exception occurs:%s: %s'%(type(e),e))
                 caller(self.button[args[1]])
         else:
             print('Unkonwn operation: ', args[0])
@@ -114,3 +117,12 @@ class Recorder():
             self.repeat(*item)
             time.sleep(interval)
         
+if __name__ == '__main__':
+    print('starting to record. ESC to exit')
+    recorder = Recorder()
+    if sys.argv[1] in "record":
+        recorder.record()
+        recorder.record_to_pickle()
+    elif sys.argv[1] in "repeat":
+        recorder.repeat_from_pickle()
+
